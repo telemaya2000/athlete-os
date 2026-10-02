@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Athlete OS">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="theme-color" content="#0b1220">
 <meta name="description" content="Adaptive Youth Basketball Athlete Training Operating System">
 <title>Youth Athlete OS — Adaptive Basketball Training System</title>
 <style>
@@ -21,7 +28,7 @@
   <div class="sidebar-foot">Offline-first • local data • export anytime</div>
 </aside>
 <main class="main">
-  <header class="topbar"><div><div class="kicker">Adaptive Youth Basketball System</div><h1 id="pageTitle">Today</h1></div><div class="row"><button class="btn ghost" onclick="openQuickLog()">Quick Log</button><button class="btn primary" onclick="go('today')">Today</button></div></header>
+  <header class="topbar"><div><div class="kicker">Adaptive Youth Basketball System</div><h1 id="pageTitle">Today</h1></div><div class="row"><button class="btn ghost mobile-install" id="installBtn" onclick="installApp()" style="display:none">Install</button><button class="btn ghost" onclick="openQuickLog()">Quick Log</button><button class="btn primary" onclick="go('today')">Today</button></div></header>
   <div class="content">
     <section id="view-today" class="view active"></section>
     <section id="view-log" class="view"></section>
@@ -151,6 +158,34 @@ function renderResearch(){const v=document.getElementById('view-research');const
 function renderSettings(){const v=document.getElementById('view-settings');v.innerHTML=`<div class="kicker">Personalization</div><h2 style="margin:3px 0 14px">Athlete Profile & Data</h2><div class="grid grid-2"><div class="card"><h3>Profile</h3><div class="formgrid-2 formgrid"><div class="field"><label>Name</label><input id="p-name" value="${esc(state.profile.name)}"></div><div class="field"><label>Age</label><input id="p-age" type="number" value="${esc(state.profile.age)}"></div><div class="field"><label>Sex</label><input id="p-sex" value="${esc(state.profile.sex)}"></div><div class="field"><label>Height cm</label><input id="p-heightCm" type="number" value="${esc(state.profile.heightCm)}"></div><div class="field"><label>Weight kg</label><input id="p-weightKg" type="number" step="0.1" value="${esc(state.profile.weightKg)}"></div><div class="field"><label>Positions</label><input id="p-positions" value="${esc(state.profile.positions)}"></div></div><div class="field" style="margin-top:10px"><label>Weight/physique goal</label><input id="p-goalWeight" value="${esc(state.profile.goalWeight)}"></div><div class="field" style="margin-top:10px"><label>Clinical/safety note</label><textarea id="p-note">${esc(state.health.clinicalNote)}</textarea></div><div class="row" style="margin-top:12px"><button class="btn primary" onclick="updateProfile()">Save profile</button></div></div><div class="card"><h3>System preferences</h3><div class="field"><label>Default compound RIR</label><input value="${esc(state.settings.defaultRir)}" disabled></div><div class="field" style="margin-top:10px"><label>Next anchor</label><select onchange="state.settings.nextAnchor=this.value;save();toast('Next anchor updated')"><option ${state.settings.nextAnchor==='A'?'selected':''}>A</option><option ${state.settings.nextAnchor==='B'?'selected':''}>B</option></select></div><p class="muted small" style="margin-top:10px">The system is intentionally low-burden. Edit settings only when something genuinely changes.</p></div></div><div class="section-title"><div class="kicker">Backups</div><h2 style="margin:4px 0">Your data stays local</h2></div><div class="card"><div class="row"><button class="btn" onclick="exportJSON()">Export full JSON backup</button><button class="btn" onclick="exportCSV()">Export workout CSV</button><label class="btn">Import JSON<input type="file" accept="application/json" style="display:none" onchange="importJSON(this.files[0])"></label><button class="btn danger" onclick="resetData()">Reset app data</button></div><p class="muted small" style="margin-top:12px">The app uses browser localStorage. Keep a JSON backup periodically, especially before switching phones or browsers.</p></div><div class="section-title"><div class="kicker">Current health flags</div><h2 style="margin:4px 0">Baseline pain (self-reported)</h2></div><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Area</th><th>Daily baseline</th><th>Training symptom rating</th></tr></thead><tbody>${Object.keys(state.health.trainingPain).map(k=>`<tr><td>${esc(k)}</td><td>${state.health.painBaseline[k]??'—'}</td><td>${state.health.trainingPain[k]??'—'}</td></tr>`).join('')}</tbody></table></div></div>`}
 function render(){renderToday();renderLog();renderPlan();renderExercises();renderProgress();renderRules();renderResearch();renderSettings();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+currentView));document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===currentView));document.getElementById('pageTitle').textContent=navItems.find(x=>x[0]===currentView)?.[1]||currentView}
 initNav();render();
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const btn = document.getElementById("installBtn");
+  if (btn) btn.style.display = "inline-flex";
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  const btn = document.getElementById("installBtn");
+  if (btn) btn.style.display = "none";
+  toast("Athlete OS installed on this device");
+});
+async function installApp(){
+  if (!deferredInstallPrompt) {
+    toast("Use your browser's Add to Home Screen / Install App option");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch(e) {}
+  deferredInstallPrompt = null;
+  const btn = document.getElementById("installBtn");
+  if (btn) btn.style.display = "none";
+}
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+}
 </script>
 </body>
 </html>
